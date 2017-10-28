@@ -16,11 +16,15 @@ defmodule Telemetry do
   def format_request_metadata(method, url, body, headers) do
     api_request_id = Base.encode64(:crypto.strong_rand_bytes(32), padding: false)
     parsed_url = URI.parse(url)
-    {_access_token, sanitized_query} = parsed_url.query
-                                       |> URI.query_decoder()
-                                       |> Enum.to_list
-                                       |> Enum.into(%{})
-                                       |> get_and_update_in(["access_token"], &{&1, "[REDACTED]"})
+    {_access_token, sanitized_query} = case parsed_url.query do
+      nil -> {nil, ""}
+      uri -> uri
+             |> URI.query_decoder()
+             |> Enum.to_list
+             |> Enum.into(%{})
+             |> get_and_update_in(["access_token"], &{&1, "[REDACTED]"})
+    end
+
     base_url = %{parsed_url | query: nil}
     method = "#{method}" |> String.upcase
     metadata = %{
