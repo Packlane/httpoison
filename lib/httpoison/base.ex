@@ -175,13 +175,10 @@ defmodule HTTPoison.Base do
         url = process_url(to_string(url))
         body = process_request_body(body)
         headers = process_request_headers(headers)
-        api_request_id = Base.encode64(:crypto.strong_rand_bytes(32), padding: false)
-        metadata = %{module: inspect(__MODULE__), method: "#{method}" |> String.upcase, api_request_id: api_request_id, request: %{url: url, body: body, headers: headers}}
-        Logger.info("Outgoing API Request", metadata: metadata)
-        response = HTTPoison.Base.request(__MODULE__, method, url, body, headers, options, &process_status_code/1, &process_headers/1, &process_response_body/1)
-        {_status, sanitized_response} = response
-        sanitized_response = %{sanitized_response | headers: Enum.into(sanitized_response.headers, %{})}
-        Logger.info("Outgoing API Response", metadata: metadata |> Map.merge(%{response: sanitized_response}))
+        metadata = Telemetry.log_request(method, url, body, headers)
+        {elapsed_time, response} = fn() -> HTTPoison.Base.request(__MODULE__, method, url, body, headers, options, &process_status_code/1, &process_headers/1, &process_response_body/1) end
+                                   |> :timer.tc
+        Telemetry.log_response(metadata, {elapsed_time, response})
         response
       end
 
