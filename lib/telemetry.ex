@@ -21,15 +21,15 @@ defmodule Telemetry do
 
     base_url = %{parsed_url | query: nil}
     method = "#{method}" |> String.upcase
-    metadata = %{
-                  module: inspect(__MODULE__),
-                  api_request_id: api_request_id,
-                  method: method,
-                  url: URI.to_string(base_url),
-                  headers: scrubbed_headers(headers),
-                  request_body: parse_body(body, headers),
-                  query: sanitized_query,
-                }
+    %{
+      module: inspect(__MODULE__),
+      api_request_id: api_request_id,
+      method: method,
+      url: URI.to_string(base_url),
+      headers: scrubbed_headers(headers),
+      request_body: parse_body(body, headers),
+      query: sanitized_query,
+    }
   end
 
   def format_response_metadata(response, elapsed_time) do
