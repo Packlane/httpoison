@@ -2,8 +2,7 @@ defmodule Telemetry do
   require Logger
   def log_request(method, url, body, headers, {elapsed_time, response}) do
     metadata = Telemetry.format_request_metadata(method, url, body, headers)
-    {_status, sanitized_response} = response
-    response_metadata = Telemetry.format_response_metadata(sanitized_response, elapsed_time)
+    response_metadata = Telemetry.format_response_metadata(response, elapsed_time)
     Logger.info("Outgoing API Request", metadata: metadata |> Map.merge(response_metadata))
     response
   end
@@ -34,14 +33,29 @@ defmodule Telemetry do
   end
 
   def format_response_metadata(response, elapsed_time) do
-    %{
-       status_code: response.status_code,
-       response_body: parse_body(response.body, response.headers),
-       response_headers: scrubbed_headers(response.headers),
-       duration_in_ms: elapsed_time
-                       |> Kernel./(1000)
-                       |> :erlang.float_to_binary(decimals: 3)
-     }
+    case response do
+      {:ok, content} ->
+        %{
+          status_code: content.status_code,
+          response_body: parse_body(content.body, content.headers),
+          response_headers: scrubbed_headers(content.headers),
+          duration_in_ms: to_ms(elapsed_time)
+        }
+      {:error, error} ->
+        %{
+          status_code: 999,
+          error: "#{error.reason}",
+          response_body: "",
+          response_headers: "",
+          duration_in_ms: to_ms(elapsed_time)
+        }
+    end
+  end
+
+  def to_ms(elapsed_time) do
+    elapsed_time
+    |> Kernel./(1000)
+    |> :erlang.float_to_binary(decimals: 3)
   end
 
   def parse_body(body, headers) do
