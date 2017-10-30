@@ -71,9 +71,13 @@ defmodule Telemetry do
 
     # BitStrings that can't be cast to Strings blow up here.
     # So we pre-emptively check their viability with encoding.
-    case Poison.encode(result) do
-      {:ok, _} -> result
-      {:error, _} -> "[redacted_bitstring]"
+    try do
+      case Poison.encode(result) do
+        {:ok, _} -> result
+        {:error, _} -> "[redacted_bitstring]"
+      end
+    rescue
+      _ -> "[redacted_bitstring]"
     end
   end
 
