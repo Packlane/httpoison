@@ -62,11 +62,18 @@ defmodule Telemetry do
   end
 
   def parse_body(body, headers) do
-    with %{"content-type" => "application/json"} <- headers,
-         {:ok, json} <- Poison.decode(body) do
-           json
+    result = with %{"content-type" => "application/json"} <- headers,
+                  {:ok, json} <- Poison.decode(body) do
+                    json
     else
       _other -> body
+    end
+
+    # BitStrings that can't be cast to Strings blow up here.
+    # So we pre-emptively check their viability with encoding.
+    case Poison.encode(result) do
+      {:ok, _} -> result
+      {:error, _} -> "[redacted_bitstring]"
     end
   end
 
