@@ -69,15 +69,16 @@ defmodule Telemetry do
       _other -> body
     end
 
+    failure_placeholder = "[non_string_binary_blob]"
     # BitStrings that can't be cast to Strings blow up here.
     # So we pre-emptively check their viability with encoding.
     try do
       case Poison.encode(result) do
         {:ok, _} -> result
-        {:error, _} -> "[redacted_bitstring]"
+        {:error, _} -> failure_placeholder
       end
     rescue
-      _ -> "[redacted_bitstring]"
+      _ -> failure_placeholder
     end
   end
 
