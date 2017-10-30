@@ -1,13 +1,13 @@
 defmodule Telemetry do
   require Logger
-  def log_request(method, url, body, headers, {elapsed_time, response}) do
-    metadata = Telemetry.format_request_metadata(method, url, body, headers)
+  def log_request(env, method, url, body, headers, {elapsed_time, response}) do
+    metadata = Telemetry.format_request_metadata(env, method, url, body, headers)
     response_metadata = Telemetry.format_response_metadata(response, elapsed_time)
     Logger.info("Outgoing API Request", metadata: metadata |> Map.merge(response_metadata))
     response
   end
 
-  def format_request_metadata(method, url, body, headers) do
+  def format_request_metadata(env, method, url, body, headers) do
     api_request_id = Base.encode64(:crypto.strong_rand_bytes(32), padding: false)
     parsed_url = URI.parse(url)
     {_access_token, sanitized_query} = case parsed_url.query do
@@ -21,8 +21,11 @@ defmodule Telemetry do
 
     base_url = %{parsed_url | query: nil}
     method = "#{method}" |> String.upcase
+    module = env.module
+    {function, arity} = env.function
+    module_function = "#{module}.#{function}/#{arity}"
     %{
-      module: inspect(__MODULE__),
+      function: module_function,
       api_request_id: api_request_id,
       method: method,
       url: URI.to_string(base_url),

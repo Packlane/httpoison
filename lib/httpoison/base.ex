@@ -177,7 +177,7 @@ defmodule HTTPoison.Base do
         headers = process_request_headers(headers)
         {elapsed_time, response} = fn() -> HTTPoison.Base.request(__MODULE__, method, url, body, headers, options, &process_status_code/1, &process_headers/1, &process_response_body/1) end
                                    |> :timer.tc
-        Telemetry.log_request(method, url, body, headers, {elapsed_time, response})
+        Telemetry.log_request(__ENV__, method, url, body, headers, {elapsed_time, response})
         response
       end
 
