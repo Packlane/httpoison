@@ -69,7 +69,7 @@ defmodule Telemetry do
       _other -> body
     end
 
-    failure_placeholder = "[non_string_binary_blob]"
+    failure_placeholder = ""
     # BitStrings that can't be cast to Strings blow up here.
     # So we pre-emptively check their viability with encoding.
     try do
