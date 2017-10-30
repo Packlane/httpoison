@@ -1,9 +1,9 @@
 defmodule Telemetry do
-  require Logger
-  def log_request(env, method, url, body, headers, {elapsed_time, response}) do
+  def log_request(logger, env, method, url, body, headers, {elapsed_time, response}) do
     metadata = Telemetry.format_request_metadata(env, method, url, body, headers)
     response_metadata = Telemetry.format_response_metadata(response, elapsed_time)
-    Logger.info("Outgoing API Request", metadata: metadata |> Map.merge(response_metadata))
+    # Pass logger by reference in order to use logger from Primary app
+    logger.("Outgoing API Request", metadata |> Map.merge(response_metadata))
     response
   end
 
