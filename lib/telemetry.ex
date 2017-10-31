@@ -69,6 +69,9 @@ defmodule Telemetry do
       _other -> body
     end
 
+    # Max line length in ELK stack is 32k. Beyond this it won't index the line.
+    # Setting the length to 10k per response body and request body means we leave
+    # 12k available for remainder of metadata, a wide margin of safety.
     max_length = 10000
     failure_placeholder = %{error: "unencodable binary"}
     # BitStrings that can't be cast to Strings blow up here.
