@@ -58,7 +58,7 @@ defmodule Telemetry do
   def to_ms(elapsed_time) do
     elapsed_time
     |> Kernel./(1000)
-    |> :erlang.float_to_binary(decimals: 3)
+    |> Float.round(3)
   end
 
   def parse_body(body, headers) do
