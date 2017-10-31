@@ -28,6 +28,7 @@ defmodule HTTPoison.Mixfile do
       {:meck, "~> 0.8.2", only: :test},
       {:earmark, "~> 1.0", only: :dev},
       {:ex_doc, "~> 0.14", only: :dev},
+      {:poison, "~> 3.1"},
     ]
   end
 

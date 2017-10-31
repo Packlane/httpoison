@@ -69,12 +69,21 @@ defmodule Telemetry do
       _other -> body
     end
 
-    failure_placeholder = ""
+    max_length = 10000
+    failure_placeholder = %{error: "unencodable binary"}
     # BitStrings that can't be cast to Strings blow up here.
     # So we pre-emptively check their viability with encoding.
+
     try do
-      case Poison.encode(result) do
-        {:ok, _} -> result
+      encoded = Poison.encode(result)
+      case encoded do
+        {:ok, string} ->
+          # Guard against large requests/responses that cause issues in ELK
+          if length(string) > max_length do
+            %{truncated: true, msg: String.slice(string, 0..max_length)}
+          else
+            result
+          end
         {:error, _} -> failure_placeholder
       end
     rescue
