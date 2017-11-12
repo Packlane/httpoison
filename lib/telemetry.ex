@@ -30,7 +30,8 @@ defmodule Telemetry do
       method: method,
       url: URI.to_string(base_url),
       headers: scrubbed_headers(headers),
-      request_body: parse_body(body, headers),
+      request_body: parse_body(body, headers)
+                    |> truncate_body,
       query: sanitized_query,
     }
   end
@@ -42,7 +43,7 @@ defmodule Telemetry do
           %HTTPoison.Response{} -> %{
                                     status_code: content.status_code,
                                     response_body: parse_body(content.body, content.headers)
-                                    |> truncate_body,
+                                                   |> truncate_body,
                                     response_headers: scrubbed_headers(content.headers),
                                     duration_in_ms: to_ms(elapsed_time)
                                 }
@@ -74,11 +75,10 @@ defmodule Telemetry do
     end
   end
 
-  def truncate_body(decoded_body) do
+  def truncate_body(decoded_body, max_length \\ 10000) do
     # Max line length in ELK stack is 32k. Beyond this it won't index the line.
     # Setting the length to 10k per response body and request body means we leave
     # 12k available for remainder of metadata, a wide margin of safety.
-    max_length = 10000
     failure_placeholder = %{error: "unencodable value"}
     # BitStrings that can't be cast to Strings blow up here.
     # So we pre-emptively check their viability with encoding.
@@ -86,17 +86,20 @@ defmodule Telemetry do
     try do
       encoded = Poison.encode(decoded_body)
       case encoded do
-        {:ok, string} ->
-          # Guard against large requests/responses that cause issues in ELK
-          if length(string) > max_length do
-            %{truncated: true, msg: String.slice(string, 0..max_length)}
-          else
-            decoded_body
-          end
+        # Guard against large requests/responses that cause issues in ELK
+        {:ok, string} -> truncate_string(string, decoded_body, max_length)
         {:error, _} -> failure_placeholder
       end
     rescue
-      _ -> failure_placeholder
+      _err -> failure_placeholder
+    end
+  end
+
+  def truncate_string(string, decoded_body, max_length) do
+    if String.length(string) > max_length do
+      %{truncated: true, msg: String.slice(string, 0..max_length)}
+    else
+      decoded_body
     end
   end
 
