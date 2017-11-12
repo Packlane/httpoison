@@ -1,4 +1,8 @@
 defmodule Telemetry do
+
+  @failure_placeholder %{error: "unencodable value"}
+  def failure_placeholder(), do: @failure_placeholder
+
   def log_request(logger, env, method, url, body, headers, {elapsed_time, response}) do
     metadata = Telemetry.format_request_metadata(env, method, url, body, headers)
     response_metadata = Telemetry.format_response_metadata(response, elapsed_time)
@@ -79,7 +83,6 @@ defmodule Telemetry do
     # Max line length in ELK stack is 32k. Beyond this it won't index the line.
     # Setting the length to 10k per response body and request body means we leave
     # 12k available for remainder of metadata, a wide margin of safety.
-    failure_placeholder = %{error: "unencodable value"}
     # BitStrings that can't be cast to Strings blow up here.
     # So we pre-emptively check their viability with encoding.
 
@@ -88,10 +91,10 @@ defmodule Telemetry do
       case encoded do
         # Guard against large requests/responses that cause issues in ELK
         {:ok, string} -> truncate_string(string, decoded_body, max_length)
-        {:error, _} -> failure_placeholder
+        {:error, _} -> failure_placeholder()
       end
     rescue
-      _err -> failure_placeholder
+      _err -> failure_placeholder()
     end
   end
 
