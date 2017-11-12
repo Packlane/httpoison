@@ -38,16 +38,20 @@ defmodule Telemetry do
   def format_response_metadata(response, elapsed_time) do
     case response do
       {:ok, content} ->
-        %{
-          status_code: content.status_code,
-          response_body: parse_body(content.body, content.headers),
-          response_headers: scrubbed_headers(content.headers),
-          duration_in_ms: to_ms(elapsed_time)
-        }
+        case content do
+          %HTTPoison.Response{} -> %{
+                                    status_code: content.status_code,
+                                    response_body: parse_body(content.body, content.headers)
+                                    |> truncate_body,
+                                    response_headers: scrubbed_headers(content.headers),
+                                    duration_in_ms: to_ms(elapsed_time)
+                                }
+            _ -> %{}
+        end
       {:error, error} ->
         %{
           status_code: 999,
-          error: "#{error.reason}",
+          error: "#{inspect error.reason}",
           response_body: "",
           response_headers: "",
           duration_in_ms: to_ms(elapsed_time)
@@ -68,24 +72,26 @@ defmodule Telemetry do
     else
       _other -> body
     end
+  end
 
+  def truncate_body(decoded_body) do
     # Max line length in ELK stack is 32k. Beyond this it won't index the line.
     # Setting the length to 10k per response body and request body means we leave
     # 12k available for remainder of metadata, a wide margin of safety.
     max_length = 10000
-    failure_placeholder = %{error: "unencodable binary"}
+    failure_placeholder = %{error: "unencodable value"}
     # BitStrings that can't be cast to Strings blow up here.
     # So we pre-emptively check their viability with encoding.
 
     try do
-      encoded = Poison.encode(result)
+      encoded = Poison.encode(decoded_body)
       case encoded do
         {:ok, string} ->
           # Guard against large requests/responses that cause issues in ELK
           if length(string) > max_length do
             %{truncated: true, msg: String.slice(string, 0..max_length)}
           else
-            result
+            decoded_body
           end
         {:error, _} -> failure_placeholder
       end
@@ -95,6 +101,9 @@ defmodule Telemetry do
   end
 
   @spec scrubbed_headers([{String.t, String.t}]) :: [{String.t, String.t}]
+  defp scrubbed_headers([]), do: []
+  defp scrubbed_headers(headers) when is_tuple(headers), do: headers
+  defp scrubbed_headers(headers) when is_bitstring(headers), do: headers
   defp scrubbed_headers(headers) do
     headers
     |> Enum.map(fn
